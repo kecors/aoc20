@@ -46,7 +46,9 @@ fn main() {
 
     if let Some((entry_1, entry_2)) = proc_1(2020, &items) {
         println!(
-            "Part 1: the product of two entries ({}, {}) is {}", entry_1, entry_2,
+            "Part 1: the product of two entries ({}, {}) is {}",
+            entry_1,
+            entry_2,
             entry_1 * entry_2
         );
     } else {
@@ -55,7 +57,10 @@ fn main() {
 
     if let Some((entry_1, entry_2, entry_3)) = proc_2(items) {
         println!(
-            "Part 2: the product of three entries ({}, {}, {}) is {}", entry_1, entry_2, entry_3,
+            "Part 2: the product of three entries ({}, {}, {}) is {}",
+            entry_1,
+            entry_2,
+            entry_3,
             entry_1 * entry_2 * entry_3
         );
     } else {
