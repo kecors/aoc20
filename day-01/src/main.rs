@@ -1,20 +1,38 @@
 use std::collections::HashSet;
 use std::io::{stdin, Read};
 
-fn solve(items: &Vec<u32>) -> u32 {
+fn proc_1(target_sum: u32, items: &Vec<u32>) -> Option<(u32, u32)> {
     let mut values: HashSet<u32> = HashSet::new();
 
     for &item in items.iter() {
-        let complement: u32 = 2020 - item;
+        if item < target_sum {
+            let complement = target_sum - item;
 
-        if values.contains(&complement) {
-            return item * complement;
+            if values.contains(&complement) {
+                return Some((item, complement));
+            }
         }
 
         values.insert(item);
     }
 
-    panic!("No solution available");
+    None
+}
+
+fn proc_2(mut items: Vec<u32>) -> Option<(u32, u32, u32)> {
+    loop {
+        let entry_1 = if let Some(item) = items.pop() {
+            item
+        } else {
+            break;
+        };
+
+        if let Some((entry_2, entry_3)) = proc_1(2020 - entry_1, &items) {
+            return Some((entry_1, entry_2, entry_3));
+        }
+    }
+
+    None
 }
 
 fn main() {
@@ -26,7 +44,21 @@ fn main() {
         .map(|x| x.trim().parse::<u32>().unwrap())
         .collect();
 
-    let x = solve(&items);
+    if let Some((entry_1, entry_2)) = proc_1(2020, &items) {
+        println!(
+            "Part 1: the product of two entries ({}, {}) is {}", entry_1, entry_2,
+            entry_1 * entry_2
+        );
+    } else {
+        println!("Part 1 has no valid solution");
+    }
 
-    println!("Part 1: the product is {}", &x);
+    if let Some((entry_1, entry_2, entry_3)) = proc_2(items) {
+        println!(
+            "Part 2: the product of three entries ({}, {}, {}) is {}", entry_1, entry_2, entry_3,
+            entry_1 * entry_2 * entry_3
+        );
+    } else {
+        println!("Part 2 has no valid solution");
+    }
 }
