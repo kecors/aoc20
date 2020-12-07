@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::io::{stdin, Read};
 
-fn proc_1(target_sum: u32, items: &Vec<u32>) -> Option<(u32, u32)> {
+fn proc_1(target_sum: u32, items: &[u32]) -> Option<(u32, u32)> {
     let mut values: HashSet<u32> = HashSet::new();
 
     for &item in items.iter() {
@@ -20,13 +20,7 @@ fn proc_1(target_sum: u32, items: &Vec<u32>) -> Option<(u32, u32)> {
 }
 
 fn proc_2(mut items: Vec<u32>) -> Option<(u32, u32, u32)> {
-    loop {
-        let entry_1 = if let Some(item) = items.pop() {
-            item
-        } else {
-            break;
-        };
-
+    while let Some(entry_1) = items.pop() {
         if let Some((entry_2, entry_3)) = proc_1(2020 - entry_1, &items) {
             return Some((entry_1, entry_2, entry_3));
         }
