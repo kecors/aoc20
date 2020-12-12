@@ -1,3 +1,4 @@
+use itertools::zip;
 use std::io::{stdin, Read};
 
 fn main() {
@@ -21,12 +22,21 @@ fn main() {
         .collect();
     dbg!(&seat_id_binary_strings);
 
-    let seat_ids: Vec<u16> = seat_id_binary_strings
+    let mut seat_ids: Vec<u16> = seat_id_binary_strings
         .iter()
         .map(|x| u16::from_str_radix(x, 2).unwrap())
         .collect();
     dbg!(&seat_ids);
 
-    let x = seat_ids.iter().max().unwrap();
-    dbg!(&x);
+    let max_seat_id = seat_ids.iter().max().unwrap();
+    dbg!(&max_seat_id);
+
+    seat_ids.sort_unstable();
+    dbg!(&seat_ids);
+
+    for (a, &b) in zip(&seat_ids, &seat_ids[1..]) {
+        if a + 1 != b {
+            println!("a ({}) and b ({}) have a gap!", a, b);
+        }
+    }
 }
