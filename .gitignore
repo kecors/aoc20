@@ -1,4 +1,4 @@
 Cargo.lock
 puzzle-input.txt
-sample.txt
+sample*.txt
 target
