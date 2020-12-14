@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::io::{stdin, Read};
 
 fn main() {
@@ -19,7 +20,7 @@ fn main() {
     groups.push(last_group);
 
     let mut sum = 0;
-    for group in groups {
+    for group in groups.iter() {
         let mut answers: Vec<char> = group.iter().map(|g| g.chars()).flatten().collect();
         answers.sort_unstable();
         answers.dedup();
@@ -27,4 +28,24 @@ fn main() {
     }
 
     println!("Part 1: the sum of the counts is {}", sum);
+
+    let mut sum = 0;
+    for group in groups.iter() {
+        let person_hss: Vec<HashSet<char>> = group
+            .iter()
+            .map(|x| {
+                let hs = x.chars().collect();
+                hs
+            })
+            .collect();
+
+        let mut common_hs: HashSet<char> = ('a'..='z').collect();
+        for person_hs in person_hss.iter() {
+            common_hs.retain(|x| person_hs.contains(&x));
+        }
+
+        sum += common_hs.len();
+    }
+
+    println!("Part 2: the sum of the counts is {}", sum);
 }
