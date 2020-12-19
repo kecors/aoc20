@@ -1,0 +1,14 @@
+alpha = { 'a' .. 'z' }
+digit = { '0' .. '9' }
+color = { alpha+ ~ " " ~ alpha+ }
+
+outer_bag_color = { color }
+inner_single_bag_color = { color }
+inner_multiple_bags_quantity = { digit }
+inner_multiple_bags_color = { color }
+
+inner_content = _{ "no other bags" | ("1 " ~ inner_single_bag_color ~ " bag") | (inner_multiple_bags_quantity ~ " " ~ inner_multiple_bags_color ~ " bags") }
+
+regulation = _{ outer_bag_color ~ " bags contain " ~ inner_content ~ (", " ~ inner_content)* ~ "." }
+
+main = _{ SOI ~ regulation+ ~ EOI }
