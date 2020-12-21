@@ -11,36 +11,27 @@ use std::io::{stdin, Read};
 struct RegulationParser;
 
 #[derive(Debug)]
-struct Regulation {
-    outer_bag_color: String,
-    inner_bags: Vec<(u8, String)>,
-}
-
-#[derive(Debug)]
 struct State {
-    regulations: Vec<Regulation>,
     containables: HashMap<String, Vec<String>>,
+    containments: HashMap<String, Vec<(u32, String)>>,
 }
 
 impl State {
     fn new() -> State {
-        let regulations = Vec::new();
         let containables = HashMap::new();
+        let containments = HashMap::new();
 
         State {
-            regulations,
             containables,
+            containments,
         }
     }
 
     fn parse_line(&mut self, line: &str) {
-        dbg!(&line);
-
         let pairs =
             RegulationParser::parse(Rule::regulation, line).unwrap_or_else(|e| panic!("{}", e));
 
         let mut outer_bag_color: String = String::new();
-        let mut inner_bags: Vec<(u8, String)> = Vec::new();
         let mut inner_multiple_bags_quantity = 0;
 
         for pair in pairs {
@@ -52,37 +43,40 @@ impl State {
                     outer_bag_color.push_str(&text);
                 }
                 Rule::inner_single_bag_color => {
-                    inner_bags.push((1, text.clone()));
                     let vec = self
                         .containables
                         .entry(text.clone())
                         .or_insert_with(Vec::new);
                     vec.push(outer_bag_color.clone());
+                    let vec = self
+                        .containments
+                        .entry(outer_bag_color.clone())
+                        .or_insert_with(Vec::new);
+                    vec.push((1, text.clone()));
                 }
                 Rule::inner_multiple_bags_quantity => {
-                    inner_multiple_bags_quantity = text.parse::<u8>().unwrap();
+                    inner_multiple_bags_quantity = text.parse::<u32>().unwrap();
                 }
                 Rule::inner_multiple_bags_color => {
-                    inner_bags.push((inner_multiple_bags_quantity, text.clone()));
                     let vec = self
                         .containables
                         .entry(text.clone())
                         .or_insert_with(Vec::new);
                     vec.push(outer_bag_color.clone());
+                    let vec = self
+                        .containments
+                        .entry(outer_bag_color.clone())
+                        .or_insert_with(Vec::new);
+                    vec.push((inner_multiple_bags_quantity, text.clone()));
                 }
                 _ => {
                     println!("unrecognized rule {}", &text);
                 }
             }
         }
-
-        self.regulations.push(Regulation {
-            outer_bag_color,
-            inner_bags,
-        });
     }
 
-    fn count_containable(self, target_color: &str) -> usize {
+    fn count_containable(&mut self, target_color: &str) -> usize {
         let mut candidates = vec![target_color];
         let mut containable_hs: HashSet<&str> = HashSet::new();
 
@@ -96,6 +90,18 @@ impl State {
         }
 
         containable_hs.len()
+    }
+
+    fn calculate_containment(&self, target_color: &str) -> u32 {
+        let mut count = 1;
+
+        if let Some(vec) = self.containments.get(target_color) {
+            for (quantity, color) in vec.iter() {
+                count += quantity * self.calculate_containment(color);
+            }
+        }
+
+        count
     }
 }
 
@@ -111,10 +117,13 @@ fn main() {
         state.parse_line(&line);
     }
 
-    dbg!(&state);
-
     println!(
         "Part 1: {} bag colors can contain shiny gold",
         state.count_containable("shiny gold")
+    );
+
+    println!(
+        "Part 2: {} bags are required inside one shiny gold bag",
+        state.calculate_containment("shiny gold") - 1
     );
 }
