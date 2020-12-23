@@ -35,12 +35,15 @@ impl State {
         State { instructions }
     }
 
-    fn run_p1(&self) -> i32 {
+    fn execute(&self) -> (bool, i32) {
         let mut accumulator = 0;
         let mut ip = 0;
         let mut visited = HashSet::new();
 
         loop {
+            if ip >= self.instructions.len() {
+                return (true, accumulator);
+            }
             if visited.contains(&ip) {
                 break;
             }
@@ -61,7 +64,41 @@ impl State {
             }
         }
 
+        (false, accumulator)
+    }
+
+    fn run_p1(&self) -> i32 {
+        let (_terminated, accumulator) = self.execute();
+
         accumulator
+    }
+
+    fn run_p2(&mut self) -> i32 {
+        for index in 0..self.instructions.len() {
+            match self.instructions[index].0 {
+                Operator::Acc => {}
+                Operator::Jmp => {
+                    let argument = self.instructions[index].1;
+                    self.instructions[index] = (Operator::Nop, argument);
+                    let (terminated, accumulator) = self.execute();
+                    if terminated {
+                        return accumulator;
+                    }
+                    self.instructions[index] = (Operator::Jmp, argument);
+                }
+                Operator::Nop => {
+                    let argument = self.instructions[index].1;
+                    self.instructions[index] = (Operator::Jmp, argument);
+                    let (terminated, accumulator) = self.execute();
+                    if terminated {
+                        return accumulator;
+                    }
+                    self.instructions[index] = (Operator::Nop, argument);
+                }
+            }
+        }
+
+        0
     }
 }
 
@@ -71,7 +108,8 @@ fn main() {
 
     let lines: Vec<&str> = input.lines().collect();
 
-    let state = State::new(&lines);
+    let mut state = State::new(&lines);
 
-    println!("The accumulator contains {}", state.run_p1());
+    println!("Part 1: The accumulator contains {}", state.run_p1());
+    println!("Part 2: The accumulator contains {}", state.run_p2());
 }
