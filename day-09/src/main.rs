@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::io::{stdin, Read};
 
 static PREAMBLE_LENGTH: usize = 25;
@@ -25,7 +26,6 @@ fn is_valid(target: usize, numbers: &[u64]) -> bool {
             if numbers[base] + numbers[other] == numbers[target] {
                 return true;
             }
-
             other += 1;
         }
         base += 1;
@@ -33,6 +33,33 @@ fn is_valid(target: usize, numbers: &[u64]) -> bool {
     }
 
     false
+}
+
+fn find_weakness(invalid: usize, numbers: &[u64]) -> Option<u64> {
+    let mut base = 0;
+    let mut other = base + 1;
+
+    while base < invalid - 1 {
+        while other < invalid {
+            let sum: u64 = numbers[base..=other].iter().sum();
+            match sum.cmp(&numbers[invalid]) {
+                Ordering::Equal => {
+                    let min = numbers[base..=other].iter().min().unwrap();
+                    let max = numbers[base..=other].iter().max().unwrap();
+                    return Some(min + max);
+                }
+                Ordering::Greater => {
+                    break;
+                }
+                Ordering::Less => {}
+            }
+            other += 1;
+        }
+        base += 1;
+        other = base + 1;
+    }
+
+    None
 }
 
 fn main() {
@@ -43,5 +70,9 @@ fn main() {
 
     if let Some(invalid) = find_invalid(&numbers) {
         println!("Part 1: the first invalid number is {}", numbers[invalid]);
+
+        if let Some(weakness) = find_weakness(invalid, &numbers) {
+            println!("Part 2: the encryption weakness is {}", weakness);
+        }
     }
 }
