@@ -1,6 +1,6 @@
 use std::io::{stdin, Read};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Position {
     Floor,
     Empty,
@@ -39,7 +39,9 @@ fn count_occupied_seats(layout: &[Vec<Position>]) -> u32 {
     count
 }
 
-fn count_adjacent(layout: &[Vec<Position>], x: usize, y: usize) -> u8 {
+// Return the number of occupied seats among
+// adjacent positions (including floor positions)
+fn adjacent(layout: &[Vec<Position>], x: usize, y: usize) -> u8 {
     let mut count = 0;
 
     if y > 0 {
@@ -81,7 +83,52 @@ fn count_adjacent(layout: &[Vec<Position>], x: usize, y: usize) -> u8 {
     count
 }
 
-fn apply_rules(old_layout: &[Vec<Position>]) -> Vec<Vec<Position>> {
+// Return the number of occupied seats among
+// visible seats (ignoring floor positions)
+fn visible(layout: &[Vec<Position>], x: usize, y: usize) -> u8 {
+    let mut count = 0;
+
+    let deltas: Vec<(isize, isize)> = vec![
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+        (-1, 0),
+        (1, 0),
+        (-1, 1),
+        (0, 1),
+        (1, 1),
+    ];
+
+    for delta in deltas.iter() {
+        let mut cx: isize = x as isize;
+        let mut cy: isize = y as isize;
+        loop {
+            cx += delta.0;
+            cy += delta.1;
+            if cx < 0 || cx >= layout[0].len() as isize || cy < 0 || cy >= layout.len() as isize {
+                break;
+            }
+            match layout[cy as usize][cx as usize] {
+                Position::Floor => {}
+                Position::Empty => {
+                    break;
+                }
+                Position::Occupied => {
+                    count += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    count
+}
+
+fn apply_rules(
+    old_layout: &[Vec<Position>],
+    comparator: &dyn Fn(&[Vec<Position>], usize, usize) -> u8,
+    threshold: u8,
+) -> Vec<Vec<Position>> {
     let mut new_layout: Vec<Vec<Position>> = Vec::new();
 
     for y in 0..old_layout.len() {
@@ -93,14 +140,14 @@ fn apply_rules(old_layout: &[Vec<Position>]) -> Vec<Vec<Position>> {
                     line.push(Position::Floor);
                 }
                 Position::Empty => {
-                    if count_adjacent(&old_layout, x, y) == 0 {
+                    if comparator(&old_layout, x, y) == 0 {
                         line.push(Position::Occupied);
                     } else {
                         line.push(Position::Empty);
                     }
                 }
                 Position::Occupied => {
-                    if count_adjacent(&old_layout, x, y) >= 4 {
+                    if comparator(&old_layout, x, y) >= threshold {
                         line.push(Position::Empty);
                     } else {
                         line.push(Position::Occupied);
@@ -119,7 +166,7 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    let mut layout: Vec<Vec<Position>> = input
+    let layout: Vec<Vec<Position>> = input
         .lines()
         .map(|x| {
             x.chars()
@@ -131,17 +178,41 @@ fn main() {
                 .collect()
         })
         .collect();
-    //display_layout(&layout);
 
+    // Part 1
+
+    let mut p1_layout = layout.clone();
+    //display_layout(&p1_layout);
     let mut old_occupied_seats = 0;
     let mut counter = 0;
     loop {
-        layout = apply_rules(&layout);
-        //display_layout(&layout);
-        let occupied_seats = count_occupied_seats(&layout);
+        p1_layout = apply_rules(&p1_layout, &adjacent, 4);
+        //display_layout(&p1_layout);
+        let occupied_seats = count_occupied_seats(&p1_layout);
         if occupied_seats == old_occupied_seats {
             println!(
                 "Part 1: {} seats end up occupied ({} applications)",
+                occupied_seats, counter
+            );
+            break;
+        }
+        old_occupied_seats = occupied_seats;
+        counter += 1;
+    }
+
+    // Part 2
+
+    let mut p2_layout = layout.clone();
+    //display_layout(&p2_layout);
+    let mut old_occupied_seats = 0;
+    let mut counter = 0;
+    loop {
+        p2_layout = apply_rules(&p2_layout, &visible, 5);
+        //display_layout(&p2_layout);
+        let occupied_seats = count_occupied_seats(&p2_layout);
+        if occupied_seats == old_occupied_seats {
+            println!(
+                "Part 2: {} seats end up occupied ({} applications)",
                 occupied_seats, counter
             );
             break;
