@@ -57,7 +57,7 @@ impl State {
         State { instructions }
     }
 
-    fn execute(&self) -> i32 {
+    fn execute_p1(&self) -> i32 {
         let mut facing = Facing::East;
         let mut x: i32 = 0;
         let mut y: i32 = 0;
@@ -111,6 +111,62 @@ impl State {
 
         x.abs() + y.abs()
     }
+
+    fn execute_p2(&self) -> i32 {
+        let mut ship_x: i32 = 0;
+        let mut ship_y: i32 = 0;
+        let mut waypoint_x: i32 = 10;
+        let mut waypoint_y: i32 = 1;
+
+        for instruction in self.instructions.iter() {
+            match instruction.action {
+                Action::North => {
+                    waypoint_y += instruction.value;
+                }
+                Action::South => {
+                    waypoint_y -= instruction.value;
+                }
+                Action::East => {
+                    waypoint_x += instruction.value;
+                }
+                Action::West => {
+                    waypoint_x -= instruction.value;
+                }
+                Action::Left => {
+                    let mut degrees = 0;
+                    while degrees < instruction.value {
+                        let old_x = waypoint_x;
+                        let old_y = waypoint_y;
+                        waypoint_x = -old_y;
+                        waypoint_y = old_x;
+                        degrees += 90;
+                    }
+                }
+                Action::Right => {
+                    let mut degrees = 0;
+                    while degrees < instruction.value {
+                        let old_x = waypoint_x;
+                        let old_y = waypoint_y;
+                        waypoint_x = old_y;
+                        waypoint_y = -old_x;
+                        degrees += 90;
+                    }
+                }
+                Action::Forward => {
+                    for _ in 0..instruction.value {
+                        ship_x += waypoint_x;
+                        ship_y += waypoint_y;
+                    }
+                }
+            }
+            println!(
+                "{:?} {}: ship {},{}, waypoint {},{}",
+                instruction.action, instruction.value, ship_x, ship_y, waypoint_x, waypoint_y
+            );
+        }
+
+        ship_x.abs() + ship_y.abs()
+    }
 }
 
 fn main() {
@@ -121,5 +177,6 @@ fn main() {
 
     let state = State::new(&lines);
 
-    println!("Part 1: the Manhattan distance is {}", state.execute());
+    println!("Part 1: the Manhattan distance is {}", state.execute_p1());
+    println!("Part 2: the Manhattan distance is {}", state.execute_p2());
 }
