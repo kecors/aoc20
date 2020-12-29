@@ -1,0 +1,11 @@
+bit = { "X" | "0" | "1" }
+bitmask = _{ "mask = " ~ bit+ }
+
+digit = { '0' .. '9' }
+address = { digit+ }
+value = { digit+ }
+write = _{ "mem[" ~ address ~ "] = " ~ value }
+
+command = _{ bitmask | write }
+
+main = _{ SOI ~ command+ ~ EOI }
