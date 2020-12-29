@@ -12,9 +12,9 @@ struct CommandParser;
 
 #[derive(Debug, Clone)]
 enum Bit {
-    Retain,
-    Set0,
-    Set1,
+    X,
+    Zero,
+    One,
 }
 
 #[derive(Debug)]
@@ -27,19 +27,22 @@ enum Command {
 struct State {
     commands: Vec<Command>,
     bitmask: Vec<Bit>,
-    values: HashMap<u64, u64>,
+    values_p1: HashMap<u64, u64>,
+    values_p2: HashMap<u64, u64>,
 }
 
 impl State {
     fn new() -> State {
         let commands = Vec::new();
         let bitmask = Vec::new();
-        let values = HashMap::new();
+        let values_p1 = HashMap::new();
+        let values_p2 = HashMap::new();
 
         State {
             commands,
             bitmask,
-            values,
+            values_p1,
+            values_p2,
         }
     }
 
@@ -56,9 +59,9 @@ impl State {
             match rule {
                 Rule::bit => {
                     bits.push(match text.as_str() {
-                        "X" => Bit::Retain,
-                        "0" => Bit::Set0,
-                        "1" => Bit::Set1,
+                        "X" => Bit::X,
+                        "0" => Bit::Zero,
+                        "1" => Bit::One,
                         _ => panic!("unexpected bit"),
                     });
                 }
@@ -78,26 +81,64 @@ impl State {
         }
     }
 
-    fn execute(&mut self) {
+    fn execute_p1(&mut self) {
         for command in self.commands.iter() {
             match command {
                 Command::Bitmask(bitmask) => {
                     self.bitmask = bitmask.to_vec();
                 }
-                Command::Write(address, value) => {
-                    let mut result = 0;
+                Command::Write(in_address, in_value) => {
+                    let mut value = 0;
                     for (index, bit) in self.bitmask.iter().rev().enumerate() {
                         match bit {
-                            Bit::Retain => {
-                                result |= (1 << index) & value;
+                            Bit::X => {
+                                value |= (1 << index) & in_value;
                             }
-                            Bit::Set0 => {}
-                            Bit::Set1 => {
-                                result |= 1 << index;
+                            Bit::Zero => {}
+                            Bit::One => {
+                                value |= 1 << index;
                             }
                         }
                     }
-                    self.values.insert(*address, result);
+                    self.values_p1.insert(*in_address, value);
+                }
+            }
+        }
+    }
+
+    fn execute_p2(&mut self) {
+        for command in self.commands.iter() {
+            match command {
+                Command::Bitmask(bitmask) => {
+                    self.bitmask = bitmask.to_vec();
+                }
+                Command::Write(in_address, in_value) => {
+                    let mut addresses = vec![0];
+                    for (index, bit) in self.bitmask.iter().rev().enumerate() {
+                        match bit {
+                            Bit::X => {
+                                let mut new_addresses = Vec::new();
+                                for address in addresses.iter() {
+                                    let new_address = address | (1 << index);
+                                    new_addresses.push(new_address);
+                                }
+                                addresses.append(&mut new_addresses);
+                            }
+                            Bit::Zero => {
+                                for address in &mut addresses {
+                                    *address |= (1 << index) & in_address;
+                                }
+                            }
+                            Bit::One => {
+                                for address in &mut addresses {
+                                    *address |= 1 << index;
+                                }
+                            }
+                        }
+                    }
+                    for address in addresses.iter() {
+                        self.values_p2.insert(*address, *in_value);
+                    }
                 }
             }
         }
@@ -114,11 +155,17 @@ fn main() {
         state.parse_line(&line);
     }
 
-    state.execute();
-
+    state.execute_p1();
     let mut sum = 0;
-    for (_, value) in state.values.iter() {
+    for (_, value) in state.values_p1.iter() {
         sum += value;
     }
-    println!("The sum of all values in memory is {}", sum);
+    println!("Part 1: The sum of all values in memory is {}", sum);
+
+    state.execute_p2();
+    let mut sum = 0;
+    for (_, value) in state.values_p2.iter() {
+        sum += value;
+    }
+    println!("Part 2: The sum of all values in memory is {}", sum);
 }
