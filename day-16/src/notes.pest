@@ -1,0 +1,27 @@
+alpha = { 'a' .. 'z' }
+space = { " " }
+digit = { '0' .. '9' }
+rule_text = { (alpha | space)+ }
+
+lower_1 = { digit+ }
+upper_1 = { digit+ }
+lower_2 = { digit+ }
+upper_2 = { digit+ }
+range_1 = _{ lower_1 ~ "-" ~ upper_1 }
+range_2 = _{ lower_2 ~ "-" ~ upper_2 }
+rule = _{ rule_text ~ ": " ~ range_1 ~ " or " ~ range_2 ~ NEWLINE}
+
+rules = _{ rule+ ~ NEWLINE }
+
+value = { digit+ }
+ticket = { value ~ ("," ~ value)+ }
+
+your_ticket_label = _{ "your ticket:" ~ NEWLINE}
+your_ticket = { ticket ~ NEWLINE }
+your_ticket_section = _{ your_ticket_label ~ your_ticket ~ NEWLINE }
+
+nearby_tickets_label = _{ "nearby tickets:" ~ NEWLINE }
+nearby_ticket = { ticket ~ NEWLINE }
+nearby_tickets_section = _{ nearby_tickets_label ~ nearby_ticket+ }
+
+main = _{ rules ~ your_ticket_section ~ nearby_tickets_section }
