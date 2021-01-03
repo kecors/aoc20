@@ -1,7 +1,7 @@
 alpha = { 'a' .. 'z' }
 space = { " " }
 digit = { '0' .. '9' }
-rule_text = { (alpha | space)+ }
+field_description = { (alpha | space)+ }
 
 lower_1 = { digit+ }
 upper_1 = { digit+ }
@@ -9,7 +9,7 @@ lower_2 = { digit+ }
 upper_2 = { digit+ }
 range_1 = _{ lower_1 ~ "-" ~ upper_1 }
 range_2 = _{ lower_2 ~ "-" ~ upper_2 }
-rule = _{ rule_text ~ ": " ~ range_1 ~ " or " ~ range_2 ~ NEWLINE}
+rule = _{ field_description ~ ": " ~ range_1 ~ " or " ~ range_2 ~ NEWLINE}
 
 rules = _{ rule+ ~ NEWLINE }
 
