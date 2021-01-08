@@ -1,0 +1,15 @@
+alpha = { 'a' .. 'z' }
+digit = { '0' .. '9' }
+
+precept_id = { digit+ }
+
+single_character = { alpha }
+literal = _{ QUOTATION_MARK ~ single_character ~ QUOTATION_MARK }
+subprecept = { digit+ ~ (" " ~ digit+)* }
+subprecepts = { subprecept ~ (" | " ~ subprecept)* }
+
+precept = _{ precept_id ~ ": " ~  (literal | subprecepts) }
+
+message = { alpha+ }
+
+main = _{ (precept ~ NEWLINE)+ ~ NEWLINE ~ (message ~ NEWLINE)+ }
