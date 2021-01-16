@@ -79,6 +79,38 @@ impl Engine {
         Engine { precepts, messages }
     }
 
+    fn part_2_fixup(&mut self) {
+        let mut sequence_8a = VecDeque::new();
+        sequence_8a.push_back(42);
+        let mut sequence_8b = VecDeque::new();
+        sequence_8b.push_back(42);
+        sequence_8b.push_back(8);
+        let precept_8 = Precept::Subprecepts(
+            vec![
+                Subprecept { sequence: sequence_8a },
+                Subprecept { sequence: sequence_8b },
+            ]
+        );
+        dbg!(&precept_8);
+        self.precepts.insert(8, precept_8);
+
+        let mut sequence_11a = VecDeque::new();
+        sequence_11a.push_back(42);
+        sequence_11a.push_back(31);
+        let mut sequence_11b = VecDeque::new();
+        sequence_11b.push_back(42);
+        sequence_11b.push_back(11);
+        sequence_11b.push_back(31);
+        let precept_11 = Precept::Subprecepts(
+            vec![
+                Subprecept { sequence: sequence_11a },
+                Subprecept { sequence: sequence_11b },
+            ]
+        );
+        dbg!(&precept_11);
+        self.precepts.insert(11, precept_11);
+    }
+
     fn verify(&self, message: &[char]) -> bool {
         let mut stack = Vec::new();
 
@@ -126,11 +158,14 @@ impl Engine {
         false
     }
 
-    fn count_matches(&mut self) -> usize {
+    fn count_matches(&self) -> usize {
         self.messages
             .iter()
-            .map(|message| self.verify(&message))
-            .filter(|b| *b)
+            .filter(|message| self.verify(&message))
+            .inspect(|message| {
+                let s: String = message.into_iter().collect();
+                println!("{:?}", s)
+            })
             .count()
     }
 }
@@ -143,4 +178,8 @@ fn main() {
 
     let sum = engine.count_matches();
     println!("Part 1: {} messages match rule 0", sum);
+
+    engine.part_2_fixup();
+    let sum = engine.count_matches();
+    println!("Part 2: {} messages match rule 0", sum);
 }
