@@ -85,13 +85,14 @@ impl Engine {
         let mut sequence_8b = VecDeque::new();
         sequence_8b.push_back(42);
         sequence_8b.push_back(8);
-        let precept_8 = Precept::Subprecepts(
-            vec![
-                Subprecept { sequence: sequence_8a },
-                Subprecept { sequence: sequence_8b },
-            ]
-        );
-        //dbg!(&precept_8);
+        let precept_8 = Precept::Subprecepts(vec![
+            Subprecept {
+                sequence: sequence_8a,
+            },
+            Subprecept {
+                sequence: sequence_8b,
+            },
+        ]);
         self.precepts.insert(8, precept_8);
 
         let mut sequence_11a = VecDeque::new();
@@ -101,13 +102,14 @@ impl Engine {
         sequence_11b.push_back(42);
         sequence_11b.push_back(11);
         sequence_11b.push_back(31);
-        let precept_11 = Precept::Subprecepts(
-            vec![
-                Subprecept { sequence: sequence_11a },
-                Subprecept { sequence: sequence_11b },
-            ]
-        );
-        //dbg!(&precept_11);
+        let precept_11 = Precept::Subprecepts(vec![
+            Subprecept {
+                sequence: sequence_11a,
+            },
+            Subprecept {
+                sequence: sequence_11b,
+            },
+        ]);
         self.precepts.insert(11, precept_11);
     }
 
@@ -123,7 +125,6 @@ impl Engine {
         });
 
         while let Some(mut context) = stack.pop() {
-            //dbg!(&context);
             if let Some(precept_id) = context.sequence.pop_front() {
                 if let Some(precept) = self.precepts.get(&precept_id) {
                     match precept {
@@ -132,7 +133,7 @@ impl Engine {
                                 let sequence = context.sequence.clone();
                                 let message_offset = context.message_offset + 1;
                                 if message.len() == message_offset {
-                                    if context.sequence.len() == 0 {
+                                    if context.sequence.is_empty() {
                                         return true;
                                     }
                                 } else {
@@ -166,10 +167,6 @@ impl Engine {
         self.messages
             .iter()
             .filter(|message| self.verify(&message))
-//            .inspect(|message| {
-//                let s: String = message.into_iter().collect();
-//                println!("{:?}", s)
-//            })
             .count()
     }
 }
