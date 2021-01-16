@@ -91,7 +91,7 @@ impl Engine {
                 Subprecept { sequence: sequence_8b },
             ]
         );
-        dbg!(&precept_8);
+        //dbg!(&precept_8);
         self.precepts.insert(8, precept_8);
 
         let mut sequence_11a = VecDeque::new();
@@ -107,7 +107,7 @@ impl Engine {
                 Subprecept { sequence: sequence_11b },
             ]
         );
-        dbg!(&precept_11);
+        //dbg!(&precept_11);
         self.precepts.insert(11, precept_11);
     }
 
@@ -123,6 +123,7 @@ impl Engine {
         });
 
         while let Some(mut context) = stack.pop() {
+            //dbg!(&context);
             if let Some(precept_id) = context.sequence.pop_front() {
                 if let Some(precept) = self.precepts.get(&precept_id) {
                     match precept {
@@ -131,12 +132,15 @@ impl Engine {
                                 let sequence = context.sequence.clone();
                                 let message_offset = context.message_offset + 1;
                                 if message.len() == message_offset {
-                                    return true;
+                                    if context.sequence.len() == 0 {
+                                        return true;
+                                    }
+                                } else {
+                                    stack.push(Context {
+                                        sequence,
+                                        message_offset,
+                                    });
                                 }
-                                stack.push(Context {
-                                    sequence,
-                                    message_offset,
-                                });
                             }
                         }
                         Precept::Subprecepts(subprecepts) => {
@@ -162,10 +166,10 @@ impl Engine {
         self.messages
             .iter()
             .filter(|message| self.verify(&message))
-            .inspect(|message| {
-                let s: String = message.into_iter().collect();
-                println!("{:?}", s)
-            })
+//            .inspect(|message| {
+//                let s: String = message.into_iter().collect();
+//                println!("{:?}", s)
+//            })
             .count()
     }
 }
