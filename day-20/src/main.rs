@@ -10,36 +10,6 @@ use std::io::{stdin, Read};
 #[grammar = "tile.pest"]
 struct TileParser;
 
-// Returns a copy of the pixelmap rotated to the right
-fn rotate_pixelmap(pixelmap: &[Vec<bool>]) -> Vec<Vec<bool>> {
-    let mut new_pixelmap = Vec::new();
-
-    for x in 0..=9 {
-        let mut row = Vec::new();
-        for y in (0..=9).rev() {
-            row.push(pixelmap[y][x]);
-        }
-        new_pixelmap.push(row);
-    }
-
-    new_pixelmap
-}
-
-// Returns a copy of the pixelmap flipped through the y axis
-fn flip_pixelmap(pixelmap: &[Vec<bool>]) -> Vec<Vec<bool>> {
-    let mut new_pixelmap = Vec::new();
-
-    for y in (0..=9).rev() {
-        let mut row = Vec::new();
-        for x in 0..=9 {
-            row.push(pixelmap[y][x]);
-        }
-        new_pixelmap.push(row);
-    }
-
-    new_pixelmap
-}
-
 fn is_matched(pixels_1: Vec<bool>, pixels_2: Vec<bool>) -> bool {
     if pixels_1.len() != pixels_2.len() {
         return false;
@@ -55,43 +25,109 @@ fn is_matched(pixels_1: Vec<bool>, pixels_2: Vec<bool>) -> bool {
 }
 
 #[derive(Debug, Clone)]
-struct Tile {
-    id: u32,
-    pixelmap: Vec<Vec<bool>>,
+struct Image {
+    rows: Vec<Vec<bool>>,
 }
 
-impl Tile {
+impl Image {
+    fn new() -> Image {
+        Image { rows: Vec::new() }
+    }
+
+    fn rotate(&self) -> Image {
+        let mut rows = Vec::new();
+
+        for x in 0..=self.rows.len() - 1 {
+            let mut row = Vec::new();
+            for y in (0..=self.rows.len() - 1).rev() {
+                row.push(self.rows[y][x]);
+            }
+            rows.push(row);
+        }
+
+        Image { rows }
+    }
+
+    fn flip(&self) -> Image {
+        let mut rows = Vec::new();
+
+        for y in (0..=self.rows.len() - 1).rev() {
+            let mut row = Vec::new();
+            for x in 0..=self.rows.len() - 1 {
+                row.push(self.rows[y][x]);
+            }
+            rows.push(row);
+        }
+
+        Image { rows }
+    }
+
+    fn generate_orientations(&self) -> Vec<Image> {
+        let right = self.rotate();
+        let bottom = right.rotate();
+        let left = bottom.rotate();
+        let top_flipped = self.flip();
+        let right_flipped = right.flip();
+        let bottom_flipped = bottom.flip();
+        let left_flipped = left.flip();
+
+        vec![
+            self.clone(),
+            right,
+            bottom,
+            left,
+            top_flipped,
+            right_flipped,
+            bottom_flipped,
+            left_flipped,
+        ]
+    }
+
     fn top(&self) -> Vec<bool> {
         let mut top = Vec::new();
-        for x in (0..=9).rev() {
-            top.push(self.pixelmap[0][x]);
+
+        for x in (0..=self.rows.len() - 1).rev() {
+            top.push(self.rows[0][x]);
         }
+
         top
     }
 
     fn right(&self) -> Vec<bool> {
         let mut right = Vec::new();
-        for y in 0..=9 {
-            right.push(self.pixelmap[y][9]);
+
+        for y in 0..=self.rows.len() - 1 {
+            right.push(self.rows[y][self.rows.len() - 1]);
         }
+
         right
     }
 
     fn bottom(&self) -> Vec<bool> {
         let mut bottom = Vec::new();
-        for x in 0..=9 {
-            bottom.push(self.pixelmap[9][x]);
+
+        for x in 0..=self.rows.len() - 1 {
+            bottom.push(self.rows[self.rows.len() - 1][x]);
         }
+
         bottom
     }
 
     fn left(&self) -> Vec<bool> {
         let mut left = Vec::new();
-        for y in (0..=9).rev() {
-            left.push(self.pixelmap[y][0]);
+
+        for y in (0..=self.rows.len() - 1).rev() {
+            left.push(self.rows[y][0]);
         }
+
         left
     }
+}
+
+#[derive(Debug, Clone)]
+struct Tile {
+    id: u32,
+    image: Image,
 }
 
 struct Square {
@@ -119,7 +155,7 @@ impl Square {
         for sy in 0..self.length {
             for sx in 0..self.length {
                 if sy < self.length && sx < self.rows[sy].len() {
-                    for (j, row) in self.rows[sy][sx].pixelmap.iter().enumerate() {
+                    for (j, row) in self.rows[sy][sx].image.rows.iter().enumerate() {
                         for pixel in row.iter() {
                             buffer[sy * 10 + j].push(if *pixel { '#' } else { '.' });
                         }
@@ -166,7 +202,7 @@ impl Engine {
     fn new(input: &str) -> Engine {
         let mut parsed_tiles = Vec::new();
         let mut id = 0;
-        let mut pixelmap: Vec<Vec<bool>> = Vec::new();
+        let mut image = Image::new();
 
         let pairs = TileParser::parse(Rule::main, input).unwrap_or_else(|e| panic!("{}", e));
 
@@ -176,62 +212,31 @@ impl Engine {
 
             match rule {
                 Rule::tile_id => {
-                    if !pixelmap.is_empty() {
-                        parsed_tiles.push(Tile { id, pixelmap });
-                        pixelmap = Vec::new();
+                    if !image.rows.is_empty() {
+                        parsed_tiles.push(Tile { id, image });
+                        image = Image::new();
                     }
                     id = text.parse::<u32>().unwrap();
                 }
-                Rule::pixels_row => {
-                    pixelmap.push(text.chars().map(|x| x == '#').collect());
+                Rule::image_row => {
+                    image.rows.push(text.chars().map(|x| x == '#').collect());
                 }
                 _ => {}
             }
         }
-        parsed_tiles.push(Tile { id, pixelmap });
+        parsed_tiles.push(Tile { id, image });
         let square_length = (parsed_tiles.len() as f64).sqrt() as usize;
 
         // Generate all rotations and flips for each tile
         let mut tiles = Vec::new();
-        for top in parsed_tiles.into_iter() {
-            let right = Tile {
-                id: top.id,
-                pixelmap: rotate_pixelmap(&top.pixelmap),
-            };
-            let bottom = Tile {
-                id: right.id,
-                pixelmap: rotate_pixelmap(&right.pixelmap),
-            };
-            let left = Tile {
-                id: bottom.id,
-                pixelmap: rotate_pixelmap(&bottom.pixelmap),
-            };
-
-            let flipped_top = Tile {
-                id: top.id,
-                pixelmap: flip_pixelmap(&top.pixelmap),
-            };
-            let flipped_right = Tile {
-                id: right.id,
-                pixelmap: flip_pixelmap(&right.pixelmap),
-            };
-            let flipped_bottom = Tile {
-                id: bottom.id,
-                pixelmap: flip_pixelmap(&bottom.pixelmap),
-            };
-            let flipped_left = Tile {
-                id: left.id,
-                pixelmap: flip_pixelmap(&left.pixelmap),
-            };
-
-            tiles.push(top);
-            tiles.push(right);
-            tiles.push(bottom);
-            tiles.push(left);
-            tiles.push(flipped_top);
-            tiles.push(flipped_right);
-            tiles.push(flipped_bottom);
-            tiles.push(flipped_left);
+        for tile in parsed_tiles.iter() {
+            let mut new_tiles = tile
+                .image
+                .generate_orientations()
+                .into_iter()
+                .map(|image| Tile { id: tile.id, image })
+                .collect();
+            tiles.append(&mut new_tiles);
         }
 
         Engine {
@@ -240,7 +245,7 @@ impl Engine {
         }
     }
 
-    fn build_square(&self, cornerstone: Tile) -> Option<u64> {
+    fn build_square(&self, cornerstone: Tile) -> Option<Square> {
         let mut used_tile_ids = HashSet::new();
         used_tile_ids.insert(cornerstone.id);
 
@@ -252,7 +257,7 @@ impl Engine {
                 .tiles
                 .iter()
                 .filter(|t| !used_tile_ids.contains(&t.id))
-                .find(|t| is_matched(t.top(), square.rows[y][0].bottom()))
+                .find(|t| is_matched(t.image.top(), square.rows[y][0].image.bottom()))
             {
                 used_tile_ids.insert(tile.id);
                 square.rows.push(vec![tile.clone()]);
@@ -268,8 +273,10 @@ impl Engine {
                     .tiles
                     .iter()
                     .filter(|t| !used_tile_ids.contains(&t.id))
-                    .filter(|t| y == 0 || !is_matched(t.top(), square.rows[y][x].bottom()))
-                    .find(|t| is_matched(t.left(), square.rows[y][x].right()))
+                    .filter(|t| {
+                        y == 0 || !is_matched(t.image.top(), square.rows[y][x].image.bottom())
+                    })
+                    .find(|t| is_matched(t.image.left(), square.rows[y][x].image.right()))
                 {
                     used_tile_ids.insert(tile.id);
                     square.rows[y].push(tile.clone());
@@ -279,24 +286,107 @@ impl Engine {
             }
         }
 
-        square.display();
-
-        Some(
-            square.rows[0][0].id as u64
-                * square.rows[0][square.length - 1].id as u64
-                * square.rows[square.length - 1][0].id as u64
-                * square.rows[square.length - 1][square.length - 1].id as u64,
-        )
+        Some(square)
     }
 
-    fn solve(&self) -> Option<u64> {
+    fn find_square(&self) -> Square {
         for tile in self.tiles.iter() {
-            if let Some(product) = self.build_square(tile.clone()) {
-                return Some(product);
+            if let Some(square) = self.build_square(tile.clone()) {
+                return square;
             }
         }
 
-        None
+        panic!("No square found");
+    }
+}
+
+#[derive(Debug)]
+struct Seas {
+    images: Vec<Image>,
+}
+
+impl Seas {
+    fn new(square: &Square) -> Seas {
+        let mut image = Image::new();
+
+        for _ in 0..square.rows.len() {
+            for _ in 1..=8 {
+                image.rows.push(Vec::new());
+            }
+        }
+
+        for sy in 0..square.rows.len() {
+            for sx in 0..square.rows[0].len() {
+                for (j, row) in square.rows[sy][sx].image.rows.iter().enumerate() {
+                    if !(1..=8).contains(&j) {
+                        continue;
+                    }
+                    for (k, pixel) in row.iter().enumerate() {
+                        if !(1..=8).contains(&k) {
+                            continue;
+                        }
+                        image.rows[sy * 8 + j - 1].push(*pixel);
+                    }
+                }
+            }
+        }
+
+        let images = image.generate_orientations();
+
+        Seas { images }
+    }
+
+    #[allow(dead_code)]
+    fn display(&self) {
+        for image in self.images.iter() {
+            for row in image.rows.iter() {
+                for pixel in row.iter() {
+                    print!("{}", if *pixel { '#' } else { '.' });
+                }
+                println!();
+            }
+            println!();
+        }
+    }
+
+    fn find_sea_monsters(&self) -> u16 {
+        let monster = vec![
+            0b00000000000000000010,
+            0b10000110000110000111,
+            0b01001001001001001000,
+        ];
+        let monster_bitcount = 15;
+        let mut sea_bitcount = u16::MAX;
+
+        for image in self.images.iter() {
+            let mut image_bitcount: u16 = 0;
+            let values: Vec<u128> = image
+                .rows
+                .iter()
+                .map(|row| {
+                    row.iter().rev().enumerate().fold(0, |mut acc, (x, b)| {
+                        if *b {
+                            image_bitcount += 1;
+                            acc += 1 << x;
+                        }
+                        acc
+                    })
+                })
+                .collect();
+            for y in 0..values.len() - 2 {
+                for x in 0..=image.rows.len() - 20 {
+                    if values[y] >> x & monster[0] == monster[0]
+                        && values[y + 1] >> x & monster[1] == monster[1]
+                        && values[y + 2] >> x & monster[2] == monster[2]
+                    {
+                        image_bitcount -= monster_bitcount;
+                    }
+                }
+            }
+            sea_bitcount = sea_bitcount.min(image_bitcount);
+        }
+
+        sea_bitcount
     }
 }
 
@@ -306,7 +396,14 @@ fn main() {
 
     let engine = Engine::new(&input);
 
-    if let Some(product) = engine.solve() {
-        println!("Part 1: the product of the corner tile IDs is {}", product);
-    }
+    let square = engine.find_square();
+    let product = square.rows[0][0].id as u64
+        * square.rows[0][square.length - 1].id as u64
+        * square.rows[square.length - 1][0].id as u64
+        * square.rows[square.length - 1][square.length - 1].id as u64;
+    println!("Part 1: the product of the corner tile IDs is {}", product);
+
+    let seas = Seas::new(&square);
+    let roughness = seas.find_sea_monsters();
+    println!("Part 2: the sea roughness is {}", roughness);
 }

@@ -2,9 +2,9 @@ alpha = { 'a' .. 'z' }
 digit = { '0' .. '9' }
 
 tile_id = { digit+ }
-pixels_row = { ("#" | ".")+ }
+image_row = { ("#" | ".")+ }
 
 heading = _{ "Tile " ~ tile_id ~ ":" }
-tile = _{ heading ~ NEWLINE ~ (pixels_row ~ NEWLINE)+ }
+tile = _{ heading ~ NEWLINE ~ (image_row ~ NEWLINE)+ }
 
 main = _{ tile ~ (NEWLINE ~ tile)* }
