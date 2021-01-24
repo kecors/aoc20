@@ -1,0 +1,10 @@
+alpha = { 'a' .. 'z' }
+
+ingredient = { alpha+ }
+allergen = { alpha+ }
+
+food_end = { ")" }
+
+food = _{ (ingredient ~ " ")+ ~ "(contains " ~ allergen ~ (", " ~ allergen)* ~ food_end ~ NEWLINE } 
+
+main = _{ food+ }
