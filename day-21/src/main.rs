@@ -56,10 +56,11 @@ impl Engine {
         Engine { foods }
     }
 
-    fn count_appearances(&self) -> usize {
+    fn count_appearances(&self) -> (usize, String) {
         let mut candidates: HashMap<String, HashSet<String>> = HashMap::new();
 
-        // Identify list of ingredients which could contain each allergen
+        // Identify list of ingredients which could
+        // contain each allergen
         for food in self.foods.iter() {
             let ingredients: HashSet<String> = food.ingredients.iter().cloned().collect();
             for allergen in food.allergens.iter() {
@@ -95,7 +96,8 @@ impl Engine {
             candidates = new_candidates;
         }
 
-        self.foods
+        let appearances = self
+            .foods
             .iter()
             .map(|food| {
                 food.ingredients
@@ -103,7 +105,22 @@ impl Engine {
                     .filter(|ingredient| !matches.values().any(|value| value == *ingredient))
                     .count()
             })
-            .sum()
+            .sum();
+
+        let mut matches_kv: Vec<(&String, &String)> = matches.iter().collect();
+        matches_kv.sort();
+
+        let dangerous = matches_kv
+            .iter()
+            .fold(String::new(), |mut acc, (_, ingredient)| {
+                if !acc.is_empty() {
+                    acc.push(',');
+                }
+                acc.push_str(ingredient);
+                acc
+            });
+
+        (appearances, dangerous)
     }
 }
 
@@ -113,6 +130,7 @@ fn main() {
 
     let engine = Engine::new(&input);
 
-    let appearances = engine.count_appearances();
+    let (appearances, dangerous) = engine.count_appearances();
     println!("Part 1: those ingredients appear {} times", appearances);
+    println!("Part 2: the dangerous ingredient list is {}", dangerous);
 }
