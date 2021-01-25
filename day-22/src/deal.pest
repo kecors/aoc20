@@ -1,0 +1,7 @@
+digit = { '0' .. '9' }
+
+player_id = { digit }
+value = { digit+ }
+player = _{ "Player " ~ player_id ~ ":" ~ NEWLINE ~ (value ~ NEWLINE)+ }
+
+main = _{ player ~ NEWLINE ~ player }
