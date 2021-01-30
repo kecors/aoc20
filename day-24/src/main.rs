@@ -21,49 +21,88 @@ enum Direction {
     Northeast,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Location {
-    directions: Vec<Direction>,
-    address: (i16, i16),
+    nesw: i16,
+    senw: i16,
 }
 
 impl Location {
     fn new(directions: Vec<Direction>) -> Location {
-        let mut address = (0, 0);
+        let mut nesw: i16 = 0;
+        let mut senw: i16 = 0;
+
         for direction in directions.iter() {
             match direction {
                 Direction::East => {
-                    address.0 += 1;
-                    address.1 += 1;
+                    senw += 1;
+                    nesw += 1;
                 }
-                Direction::Southeast => address.1 += 1,
-                Direction::Southwest => address.0 -= 1,
+                Direction::Southeast => senw += 1,
+                Direction::Southwest => nesw -= 1,
                 Direction::West => {
-                    address.0 -= 1;
-                    address.1 -= 1;
+                    nesw -= 1;
+                    senw -= 1;
                 }
-                Direction::Northwest => address.1 -= 1,
-                Direction::Northeast => address.0 += 1,
+                Direction::Northwest => senw -= 1,
+                Direction::Northeast => nesw += 1,
             }
         }
 
-        Location {
-            directions,
-            address,
-        }
+        Location { nesw, senw }
+    }
+
+    fn neighbors(&self) -> Vec<Location> {
+        let mut neighbors = Vec::new();
+
+        neighbors.push(Location {
+            nesw: self.nesw + 1,
+            senw: self.senw + 1,
+        });
+        neighbors.push(Location {
+            nesw: self.nesw,
+            senw: self.senw + 1,
+        });
+        neighbors.push(Location {
+            nesw: self.nesw - 1,
+            senw: self.senw,
+        });
+        neighbors.push(Location {
+            nesw: self.nesw - 1,
+            senw: self.senw - 1,
+        });
+        neighbors.push(Location {
+            nesw: self.nesw,
+            senw: self.senw - 1,
+        });
+        neighbors.push(Location {
+            nesw: self.nesw + 1,
+            senw: self.senw,
+        });
+
+        neighbors
     }
 }
 
-#[derive(Debug)]
-struct Engine {
-    locations: Vec<Location>,
-    addresses: HashMap<(i16, i16), bool>,
+#[derive(Debug, PartialEq, Eq)]
+enum Color {
+    White,
+    Black,
 }
 
-impl Engine {
-    fn new(input: &str) -> Engine {
-        let mut locations = Vec::new();
+#[derive(Debug)]
+struct Lobby {
+    tiles: HashMap<Location, Color>,
+}
 
+impl Lobby {
+    fn new() -> Lobby {
+        Lobby {
+            tiles: HashMap::new(),
+        }
+    }
+
+    fn parse_input(&mut self, input: &str) {
         for line in input.lines() {
             let mut directions = Vec::new();
 
@@ -83,26 +122,70 @@ impl Engine {
                 }
             }
 
-            locations.push(Location::new(directions));
+            let location = Location::new(directions);
+            self.flip(location);
+        }
+    }
+
+    fn flip(&mut self, location: Location) {
+        match self.tiles.entry(location) {
+            Entry::Vacant(vacant) => {
+                vacant.insert(Color::Black);
+            }
+            Entry::Occupied(mut occupied) => {
+                let color = occupied.get_mut();
+                match color {
+                    Color::White => *color = Color::Black,
+                    Color::Black => *color = Color::White,
+                }
+            }
+        }
+    }
+
+    fn day(&mut self) {
+        // Create a white tile for every neighboring location
+        // of a black tile which does not have a tile
+        let mut neighbors = Vec::new();
+        for (location, _) in self.tiles.iter() {
+            neighbors.append(&mut location.neighbors());
+        }
+        for neighbor in neighbors.into_iter() {
+            match self.tiles.entry(neighbor) {
+                Entry::Vacant(vacant) => {
+                    vacant.insert(Color::White);
+                }
+                Entry::Occupied(_) => {}
+            }
         }
 
-        let mut addresses = HashMap::new();
-
-        for location in locations.iter() {
-            match addresses.entry(location.address) {
-                Entry::Vacant(vacant) => {
-                    vacant.insert(true);
+        // Identify tiles which should be flipped
+        let mut flip_tiles = Vec::new();
+        for (location, color) in self.tiles.iter() {
+            let mut black_count = 0;
+            for n_location in location.neighbors() {
+                if let Some(n_color) = self.tiles.get(&n_location) {
+                    if *n_color == Color::Black {
+                        black_count += 1;
+                    }
                 }
-                Entry::Occupied(mut occupied) => {
-                    let black_flag = occupied.get_mut();
-                    *black_flag = !*black_flag;
+            }
+            match color {
+                Color::White => {
+                    if black_count == 2 {
+                        flip_tiles.push(location.clone());
+                    }
+                }
+                Color::Black => {
+                    if black_count == 0 || black_count > 2 {
+                        flip_tiles.push(location.clone());
+                    }
                 }
             }
         }
 
-        Engine {
-            locations,
-            addresses,
+        // Flip identified tiles
+        for tile in flip_tiles {
+            self.flip(tile);
         }
     }
 }
@@ -111,12 +194,23 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    let engine = Engine::new(&input);
+    let mut lobby = Lobby::new();
+    lobby.parse_input(&input);
 
-    let sum = engine
-        .addresses
+    let sum = lobby
+        .tiles
         .iter()
-        .filter(|(_, &black_flag)| black_flag)
+        .filter(|&(_, color)| *color == Color::Black)
         .count();
     println!("Part 1: {} tiles are black", sum);
+
+    for _ in 0..100 {
+        lobby.day();
+    }
+    let sum = lobby
+        .tiles
+        .iter()
+        .filter(|&(_, color)| *color == Color::Black)
+        .count();
+    println!("Part 2: {} tiles are black", sum);
 }
