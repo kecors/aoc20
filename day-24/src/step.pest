@@ -1,0 +1,10 @@
+east = { "e" }
+southeast = { "se" }
+southwest = { "sw" }
+west = { "w" }
+northwest = { "nw" }
+northeast = { "ne" }
+
+location = _{ (east | southeast | southwest | west | northwest | northeast)+ }
+
+main = _{ location+ }
