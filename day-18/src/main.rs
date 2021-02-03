@@ -1,126 +1,100 @@
+// I struggled with this one, and then implemented an approach
+// I found on reddit. It is described here:
+// https://github.com/mebeim/aoc/blob/master/2020/README.md#day-18---operation-order
+
+use std::collections::VecDeque;
 use std::io::{stdin, Read};
-
-#[derive(Debug, Clone)]
-enum Token {
-    LeftParenthesis,
-    RightParenthesis,
-    Plus,
-    Times,
-    Number(u64),
-}
-
-#[derive(Debug)]
-enum State {
-    Empty,
-    Operand(u64),
-    Add(u64),
-    Multiply(u64),
-}
-
-#[derive(Debug)]
-struct Expression {
-    tokens: Vec<Token>,
-}
-
-impl Expression {
-    fn new(line: &str) -> Expression {
-        let tokens: Vec<Token> = line
-            .chars()
-            .filter(|x| *x != ' ')
-            .map(|x| match x {
-                '(' => Token::LeftParenthesis,
-                ')' => Token::RightParenthesis,
-                '+' => Token::Plus,
-                '*' => Token::Times,
-                _ => Token::Number(x.to_digit(10).unwrap().into()),
-            })
-            .collect();
-
-        Expression { tokens }
-    }
-
-    fn evaluate(&self) -> u64 {
-        let mut stream: Vec<Token> = self.tokens.clone().into_iter().rev().collect();
-        let mut stack: Vec<State> = Vec::new();
-        let mut state = State::Empty;
-
-        while let Some(token) = stream.pop() {
-            match token {
-                Token::Number(n) => match state {
-                    State::Empty => {
-                        state = State::Operand(n);
-                    }
-                    State::Operand(x) => {
-                        panic!("unexpected Number {} in Operand {} state", n, x);
-                    }
-                    State::Add(x) => {
-                        state = State::Operand(x + n);
-                    }
-                    State::Multiply(x) => {
-                        state = State::Operand(x * n);
-                    }
-                },
-                Token::Plus => match state {
-                    State::Operand(x) => {
-                        state = State::Add(x);
-                    }
-                    _ => {
-                        panic!("unexpected Plus in state {:?}", state);
-                    }
-                },
-                Token::Times => match state {
-                    State::Operand(x) => {
-                        state = State::Multiply(x);
-                    }
-                    _ => {
-                        panic!("unexpected Times in state {:?}", state);
-                    }
-                },
-                Token::LeftParenthesis => {
-                    stack.push(state);
-                    state = State::Empty;
-                }
-                Token::RightParenthesis => match state {
-                    State::Operand(n) => {
-                        stream.push(Token::Number(n));
-                        state = stack.pop().unwrap();
-                    }
-                    _ => {
-                        panic!("unexpected RightParenthesis in state {:?}", state);
-                    }
-                },
-            }
-        }
-
-        match state {
-            State::Operand(n) => n,
-            _ => {
-                panic!("ended processing with state {:?}", state);
-            }
-        }
-    }
-}
 
 #[derive(Debug)]
 struct Engine {
-    expressions: Vec<Expression>,
+    lines: Vec<VecDeque<char>>,
 }
 
 impl Engine {
     fn new(input: &str) -> Engine {
-        let expressions: Vec<Expression> = input.lines().map(|x| Expression::new(x)).collect();
+        let mut lines = Vec::new();
 
-        Engine { expressions }
-    }
+        for line in input.lines() {
+            let mut chars = VecDeque::new();
 
-    fn add_results(&self) -> u64 {
-        let mut sum = 0;
+            for ch in line.chars().filter(|x| *x != ' ') {
+                chars.push_back(ch);
+            }
 
-        for expression in self.expressions.iter() {
-            sum += expression.evaluate();
+            lines.push(chars);
         }
 
-        sum
+        Engine { lines }
+    }
+
+    fn compute_line_p1(&mut self, index: usize) -> u64 {
+        let mut acc = 0;
+        let mut add = true;
+
+        while let Some(ch) = self.lines[index].pop_front() {
+            match ch {
+                '+' => {
+                    add = true;
+                }
+                '*' => {
+                    add = false;
+                }
+                '(' => {
+                    let value = self.compute_line_p1(index);
+                    acc = if add { acc + value } else { acc * value };
+                }
+                ')' => {
+                    break;
+                }
+                _ => {
+                    let digit: u64 = ch.to_digit(10).unwrap().into();
+                    acc = if add { acc + digit } else { acc * digit };
+                }
+            }
+        }
+
+        acc
+    }
+
+    fn compute_line_p2(&mut self, index: usize) -> u64 {
+        let mut acc = 0;
+        let mut mult = 1;
+
+        while let Some(ch) = self.lines[index].pop_front() {
+            match ch {
+                '+' => {}
+                '*' => {
+                    mult = acc;
+                    acc = 0;
+                }
+                '(' => {
+                    acc += mult * self.compute_line_p2(index);
+                }
+                ')' => {
+                    break;
+                }
+                _ => {
+                    let digit: u64 = ch.to_digit(10).unwrap().into();
+                    acc += digit * mult;
+                }
+            }
+        }
+
+        acc
+    }
+
+    fn run(&mut self, part1_flag: bool) -> u64 {
+        let mut result = 0;
+
+        for index in 0..self.lines.len() {
+            if part1_flag {
+                result += self.compute_line_p1(index);
+            } else {
+                result += self.compute_line_p2(index);
+            }
+        }
+
+        result
     }
 }
 
@@ -128,8 +102,134 @@ fn main() {
     let mut input = String::new();
     stdin().read_to_string(&mut input).unwrap();
 
-    let engine = Engine::new(&input);
-
-    let sum = engine.add_results();
+    let mut engine = Engine::new(&input);
+    let sum = engine.run(true);
     println!("Part 1: the sum of the results is {}", sum);
+
+    let mut engine = Engine::new(&input);
+    let sum = engine.run(false);
+    println!("Part 2: the sum of the results is {}", sum);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn sample1_part1() {
+        use crate::Engine;
+
+        let input = "1 + 2 * 3 + 4 * 5 + 6";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 71);
+    }
+
+    #[test]
+    fn sample1_part2() {
+        use crate::Engine;
+
+        let input = "1 + 2 * 3 + 4 * 5 + 6";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 231);
+    }
+
+    #[test]
+    fn sample2_part1() {
+        use crate::Engine;
+
+        let input = "1 + (2 * 3) + (4 * (5 + 6))";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 51);
+    }
+
+    #[test]
+    fn sample2_part2() {
+        use crate::Engine;
+
+        let input = "1 + (2 * 3) + (4 * (5 + 6))";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 51);
+    }
+
+    #[test]
+    fn sample3_part() {
+        use crate::Engine;
+
+        let input = "2 * 3 + (4 * 5)";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 26);
+    }
+
+    #[test]
+    fn sample3_part2() {
+        use crate::Engine;
+
+        let input = "2 * 3 + (4 * 5)";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 46);
+    }
+
+    #[test]
+    fn sample4_part1() {
+        use crate::Engine;
+
+        let input = "5 + (8 * 3 + 9 + 3 * 4 * 3)";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 437);
+    }
+
+    #[test]
+    fn sample4_part2() {
+        use crate::Engine;
+
+        let input = "5 + (8 * 3 + 9 + 3 * 4 * 3)";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 1445);
+    }
+
+    #[test]
+    fn sample5_part1() {
+        use crate::Engine;
+
+        let input = "5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 12240);
+    }
+
+    #[test]
+    fn sample5_part2() {
+        use crate::Engine;
+
+        let input = "5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 669060);
+    }
+
+    #[test]
+    fn sample6_part1() {
+        use crate::Engine;
+
+        let input = "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(true);
+        assert_eq!(sum, 13632);
+    }
+
+    #[test]
+    fn sample6_part2() {
+        use crate::Engine;
+
+        let input = "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2";
+        let mut engine = Engine::new(&input);
+        let sum = engine.run(false);
+        assert_eq!(sum, 23340);
+    }
 }
